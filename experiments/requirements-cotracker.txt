@@ -1,0 +1,7 @@
+# Heavy optional deps for the learned point tracker (track_markers_cotracker.py).
+# Install on top of requirements.txt:  pip install -r requirements-cotracker.txt
+torch>=2.2
+torchvision>=0.17
+einops>=0.7
+tqdm>=4.66
+imageio>=2.34

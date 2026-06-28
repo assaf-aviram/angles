@@ -1,0 +1,7 @@
+@import "./fonts/inter/inter.css";
+@import "tailwindcss";
+
+@theme {
+    --font-display: "InterDisplay";
+    --font-sans: "InterVariable";
+}
