@@ -45,6 +45,27 @@ def read_at(cap, start):
     return frame if ok else None
 
 
+def parse_seed(text):
+    """Parse '--seed' as 'x,y;x,y;x,y' pixel coords. Returns [(x, y), ...]."""
+    pts = []
+    for pair in text.split(";"):
+        x, y = pair.split(",")
+        pts.append((float(x), float(y)))
+    return pts
+
+
+def get_seed(video, start_frame, labels, seed_text):
+    """Seed points either from --seed (headless) or by clicking (needs a GUI)."""
+    if seed_text:
+        return parse_seed(seed_text)
+    cap = cv2.VideoCapture(video)
+    frame = read_at(cap, start_frame)
+    cap.release()
+    if frame is None:
+        return []
+    return click_points(frame, labels)
+
+
 def click_points(frame, labels):
     """Show the frame; collect one click per label. Returns full-res (x, y)."""
     h, w = frame.shape[:2]
@@ -164,20 +185,30 @@ def main():
     ap.add_argument("--start-frame", type=int, default=0)
     ap.add_argument("--window", type=int, default=12)
     ap.add_argument("--out", default="session_export.json")
+    ap.add_argument("--seed", help="headless seed: 'x,y;x,y;x,y' on start frame")
+    ap.add_argument("--dump-frame", metavar="PATH",
+                    help="save the start frame to PATH and exit (to read coords)")
     args = ap.parse_args()
 
     labels = [n.lower() for n in JOINTS[args.joint]]
-    cap = cv2.VideoCapture(args.video)
-    frame = read_at(cap, args.start_frame)
-    cap.release()
-    if frame is None:
-        print("Could not read the start frame.")
+    if args.dump_frame:
+        cap = cv2.VideoCapture(args.video)
+        frame = read_at(cap, args.start_frame)
+        cap.release()
+        if frame is None:
+            print("Could not read the start frame.")
+            return
+        cv2.imwrite(args.dump_frame, frame)
+        print(f"Wrote {args.dump_frame} ({frame.shape[1]}x{frame.shape[0]}). "
+              f"Read off hip/knee/ankle pixel coords, pass via --seed.")
         return
 
-    seed = click_points(frame, labels)
+    seed = get_seed(args.video, args.start_frame, labels, args.seed)
     if len(seed) < len(labels):
-        print("Cancelled — need all points.")
+        print("Need all points (use --seed 'x,y;x,y;x,y' when headless).")
         return
+    print("seed: " + ";".join(f"{x:.0f},{y:.0f}" for x, y in seed)
+          + "   (reuse with --seed)")
 
     records, w, h = track(args.video, args.start_frame, seed)
     build_session(records, args.video, args.joint, args.window, w, h, args.out)

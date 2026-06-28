@@ -31,7 +31,7 @@ import numpy as np
 import torch
 
 from bike_angle_track import angle, JOINTS
-from track_markers import click_points, read_at
+from track_markers import click_points, read_at, get_seed
 from export_overlay_session import encode_jpeg
 
 
@@ -116,19 +116,30 @@ def main():
     ap.add_argument("--max-frames", type=int, default=0)
     ap.add_argument("--device", default="auto")
     ap.add_argument("--out", default="session_export.json")
+    ap.add_argument("--seed", help="headless seed: 'x,y;x,y;x,y' on start frame")
+    ap.add_argument("--dump-frame", metavar="PATH",
+                    help="save the start frame to PATH and exit (to read coords)")
     args = ap.parse_args()
 
     labels = [n.lower() for n in JOINTS[args.joint]]
-    cap = cv2.VideoCapture(args.video)
-    seed_frame = read_at(cap, args.start_frame)
-    cap.release()
-    if seed_frame is None:
-        print("Could not read the start frame.")
+    if args.dump_frame:
+        cap = cv2.VideoCapture(args.video)
+        frame = read_at(cap, args.start_frame)
+        cap.release()
+        if frame is None:
+            print("Could not read the start frame.")
+            return
+        cv2.imwrite(args.dump_frame, frame)
+        print(f"Wrote {args.dump_frame} ({frame.shape[1]}x{frame.shape[0]}). "
+              f"Read off hip/knee/ankle pixel coords, pass via --seed.")
         return
-    seed = click_points(seed_frame, labels)  # full-res (x, y)
+
+    seed = get_seed(args.video, args.start_frame, labels, args.seed)  # (x, y)
     if len(seed) < len(labels):
-        print("Cancelled — need all points.")
+        print("Need all points (use --seed 'x,y;x,y;x,y' when headless).")
         return
+    print("seed: " + ";".join(f"{x:.0f},{y:.0f}" for x, y in seed)
+          + "   (reuse with --seed)")
 
     device = pick_device(args.device)
     print(f"Loading CoTracker3 on {device} ...")
