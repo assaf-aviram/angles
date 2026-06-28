@@ -14,16 +14,16 @@ dist-ssr
 
 # Python experiment artifacts
 experiments/.venv
-experiments/*.task
-experiments/*.mov
-experiments/*.MOV
-experiments/*.csv
-experiments/*.png
-experiments/session_export.json
 experiments/__pycache__
 
 # Huge media files
 media
+*.task
+*.mov
+*.MOV
+*.csv
+*.png
+session_export.json
 
 # Editor directories and files
 .vscode/*
@@ -35,3 +35,4 @@ media
 *.njsproj
 *.sln
 *.sw?
+experiments/*.gif
